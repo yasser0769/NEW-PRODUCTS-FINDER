@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اكتشاف المنتجات الجديدة</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #07060d;
+  --surface: #100f17;
+  --surface2: #1a1826;
+  --surface3: #242232;
+  --border: #2a2740;
+  --border2: #3a3655;
+  --text: #ece8f4;
+  --text2: #8b85a0;
+  --text3: #5e5872;
+  --accent: #a78bfa;
+  --accent-dim: rgba(167,139,250,0.1);
+  --green: #34d399;
+  --green-dim: rgba(52,211,153,0.1);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.1);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251,191,36,0.1);
+  --radius: 12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Readex Pro',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+
+.grain{position:fixed;inset:0;pointer-events:none;opacity:0.02;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.glow{position:fixed;top:-180px;left:50%;transform:translateX(-50%);width:700px;height:450px;
+  background:radial-gradient(ellipse,rgba(52,211,153,0.07),transparent 70%);pointer-events:none;z-index:0}
+.app{max-width:1120px;margin:0 auto;padding:44px 20px 80px;position:relative;z-index:1}
+
+.hdr{text-align:center;margin-bottom:48px}
+.hdr .badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:0.7rem;font-weight:500;background:var(--green-dim);color:var(--green);margin-bottom:14px;letter-spacing:0.5px}
+.hdr h1{font-size:1.75rem;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px}
+.hdr p{color:var(--text2);font-size:0.86rem;font-weight:300}
+
+.note{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:24px;font-size:0.78rem;color:var(--text2);line-height:1.9}
+.note strong{color:var(--text);font-weight:500}
+.note code{background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:0.74rem;color:var(--green)}
+
+.uploads{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:680px){.uploads{grid-template-columns:1fr}}
+.uz{background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.25s}
+.uz:hover{border-color:var(--border2);background:var(--surface2)}
+.uz.ok{border-style:solid;border-color:var(--green)}
+.uz input{display:none}
+.uz .ico{font-size:28px;margin-bottom:10px}
+.uz h3{font-size:0.9rem;font-weight:600;margin-bottom:4px}
+.uz .sub{font-size:0.74rem;color:var(--text2);font-weight:300}
+.uz .fi{font-size:0.78rem;color:var(--green);margin-top:10px;font-weight:500}
+
+details.cfg{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px}
+details.cfg summary{font-size:0.84rem;font-weight:500;color:var(--text2);cursor:pointer;list-style:none}
+details.cfg summary::-webkit-details-marker{display:none}
+details.cfg summary::before{content:'⚙️ '}
+details.cfg[open] summary{margin-bottom:16px}
+.cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.ff label{display:block;font-size:0.7rem;color:var(--text3);margin-bottom:4px}
+.ff input{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:0.8rem;outline:none}
+.ff input:focus{border-color:var(--accent)}
+
+.go{width:100%;padding:14px;border:none;border-radius:var(--radius);font-family:inherit;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--green);color:#fff;margin-bottom:28px}
+.go:hover:not(:disabled){opacity:0.88;transform:translateY(-1px)}
+.go:disabled{opacity:0.3;cursor:not-allowed}
+
+.prog{height:3px;background:var(--surface2);border-radius:4px;margin-bottom:24px;overflow:hidden;display:none}
+.prog .bar{height:100%;background:var(--green);border-radius:4px;transition:width 0.3s;width:0}
+
+.log-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;font-size:0.74rem;color:var(--text2);max-height:120px;overflow-y:auto;display:none;font-family:monospace;line-height:1.7}
+
+.stats{display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.st{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.st .n{font-size:1.4rem;font-weight:700;margin-bottom:2px}
+.st .l{font-size:0.68rem;color:var(--text2);font-weight:300}
+
+.results{display:none}
+.rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.rh h2{font-size:1.05rem;font-weight:600}
+.ra{display:flex;gap:8px}
+.b{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.2s}
+.b:hover{border-color:var(--green);background:var(--surface2)}
+.b.p{background:var(--green);border-color:var(--green);color:#fff}.b.p:hover{opacity:0.88}
+
+.search{width:100%;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:0.82rem;outline:none;margin-bottom:14px}
+.search:focus{border-color:var(--accent)}
+
+.tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;max-height:65vh;overflow-y:auto}
+.tw::-webkit-scrollbar{width:5px}
+.tw::-webkit-scrollbar-track{background:var(--surface)}
+.tw::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:0.76rem}
+thead{position:sticky;top:0;z-index:2}
+th{background:var(--surface2);padding:11px 8px;font-weight:600;text-align:right;color:var(--text2);font-size:0.7rem;border-bottom:1px solid var(--border);white-space:nowrap;min-width:100px}
+td{padding:9px 8px;border-bottom:1px solid rgba(42,39,64,0.5);white-space:nowrap;min-width:100px}
+tr:hover td{background:rgba(52,211,153,0.02)}
+.tb{display:inline-block;padding:2px 8px;border-radius:5px;font-size:0.66rem;font-weight:500;background:var(--green-dim);color:var(--green)}
+.empty{text-align:center;padding:48px;color:var(--text3);font-size:0.85rem}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp 0.35s ease forwards}
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+<div class="glow"></div>
+
+<div class="app">
+  <div class="hdr anim">
+    <div class="badge">NEW PRODUCTS FINDER</div>
+    <h1>🆕 اكتشاف المنتجات الجديدة</h1>
+    <p>قارن ملف المورد مع متجرك واستخرج المنتجات الغير موجودة لديك</p>
+  </div>
+
+  <div class="note anim">
+    <strong>الآلية:</strong> الموقع يقرأ جميع الـ SKU من ملف المورد (عمود Variant SKU) ويقارنها مع الـ SKU الموجودة في ملف سلة<br>
+    <strong>النتيجة:</strong> قائمة بالمنتجات الموجودة عند المورد ولكن <code>غير موجودة في متجرك</code><br>
+    <strong>الاستفادة:</strong> تحميل القائمة كملف Excel جاهز للإضافة إلى سلة
+  </div>
+
+  <div class="uploads">
+    <div class="uz" onclick="this.querySelector('input').click()" id="zp">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="loadSupplier(event)">
+      <div class="ico">📦</div>
+      <h3>ملف المورد (Shopify CSV)</h3>
+      <div class="sub">products-export.csv</div>
+      <div class="fi" id="ip"></div>
+    </div>
+    <div class="uz" onclick="this.querySelector('input').click()" id="zs">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="loadStore(event)">
+      <div class="ico">🏪</div>
+      <h3>ملف المتجر (سلة)</h3>
+      <div class="sub">products-prices.xlsx</div>
+      <div class="fi" id="is"></div>
+    </div>
+  </div>
+
+  <details class="cfg">
+    <summary>إعدادات متقدمة</summary>
+    <div class="cfg-grid">
+      <div class="ff"><label>بداية بيانات المورد (صف)</label><input type="number" id="supStart" value="2"></div>
+      <div class="ff"><label>عمود Variant SKU في المورد</label><input type="number" id="supSkuCol" value="13"></div>
+      <div class="ff"><label>عمود Title في المورد</label><input type="number" id="supNameCol" value="2"></div>
+      <div class="ff"><label>عمود Variant Price في المورد</label><input type="number" id="supPriceCol" value="19"></div>
+      <div class="ff"><label>عمود Compare At Price في المورد</label><input type="number" id="supCompareCol" value="20"></div>
+      <div class="ff"><label>عمود SKU في سلة</label><input type="number" id="storeSkuCol" value="4"></div>
+    </div>
+  </details>
+
+  <button class="go" id="goBtn" disabled onclick="process()">🔍 ابحث عن المنتجات الجديدة</button>
+  <div class="prog" id="prog"><div class="bar" id="bar"></div></div>
+  <div class="log-box" id="logBox"></div>
+
+  <div class="stats" id="sg">
+    <div class="st"><div class="n" id="s1" style="color:var(--accent)">0</div><div class="l">منتجات المورد</div></div>
+    <div class="st"><div class="n" id="s2" style="color:var(--blue)">0</div><div class="l">منتجات في متجرك</div></div>
+    <div class="st"><div class="n" id="s3" style="color:var(--green)">0</div><div class="l">منتجات جديدة</div></div>
+    <div class="st"><div class="n" id="s4" style="color:var(--amber)">0</div><div class="l">موجودة مسبقاً</div></div>
+  </div>
+
+  <div class="results" id="res">
+    <div class="rh">
+      <h2>📋 المنتجات الجديدة للإضافة</h2>
+      <div class="ra">
+        <button class="b p" onclick="dlXlsx()">⬇️ تحميل XLSX</button>
+        <button class="b" onclick="dlCSV()">📄 CSV</button>
+      </div>
+    </div>
+
+    <input type="text" class="search" placeholder="🔍 بحث بالاسم أو SKU..." oninput="sch(this.value)">
+
+    <div class="tw">
+      <table id="mainTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emp" style="display:none">لا توجد منتجات جديدة - جميع منتجات المورد موجودة في متجرك 🎉</div>
+  </div>
+</div>
+
+<script>
+let supRaw = null, storeWB = null;
+let displayRows=[], exportRows=[];
+let cs='';
+
+function rd(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=e=>{try{ok(XLSX.read(e.target.result,{type:'array'}))}catch(err){no(err)}};r.onerror=no;r.readAsArrayBuffer(f)})}
+
+function log(msg) {
+  const box = document.getElementById('logBox');
+  box.style.display = 'block';
+  box.innerHTML += msg + '<br>';
+  box.scrollTop = box.scrollHeight;
+}
+
+function extractStoreSKUs(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const skuCol = parseInt(document.getElementById('storeSkuCol').value) - 1 || 3; // Column D = index 3
+  const skuSet = new Set();
+  
+  log(`🔍 فحص SKU من ملف سلة (عمود ${skuCol + 1} = ${String.fromCharCode(65 + skuCol)})...`);
+  
+  // Start from row 1 (0-indexed), which is row 2 in Excel (after header)
+  for (let r = 1; r <= range.e.r; r++) {
+    const addr = XLSX.utils.encode_cell({r: r, c: skuCol});
+    const cell = ws[addr];
+    if (!cell) continue;
+    
+    let sku = '';
+    
+    // Method 1: Formula like ="563780"
+    if (cell.f) {
+      const fMatch = cell.f.match(/^"(\d+)"$/);
+      if (fMatch) sku = fMatch[1];
+    }
+    
+    // Method 2: Direct value
+    if (!sku && cell.v !== undefined && cell.v !== null && cell.v !== 0 && cell.v !== '') {
+      sku = String(cell.v).trim();
+      if (sku.startsWith('="') && sku.endsWith('"')) {
+        sku = sku.slice(2, -1);
+      }
+    }
+    
+    // Method 3: Formatted value
+    if (!sku && cell.w) {
+      sku = String(cell.w).trim();
+      if (sku === '0') sku = '';
+    }
+    
+    if (sku && sku !== '0' && sku !== 'رمز المنتج sku') {
+      // Clean: keep only digits
+      const cleanSKU = sku.replace(/[^\d]/g, '');
+      if(cleanSKU) {
+        skuSet.add(cleanSKU);
+        // Debug first 5 SKUs
+        if(skuSet.size <= 5) log(`   ✓ SKU من سلة: "${cleanSKU}"`);
+      }
+    }
+  }
+  
+  return skuSet;
+}
+
+async function loadSupplier(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const wb = await rd(f);
+  supRaw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
+  document.getElementById('zp').classList.add('ok');
+  const st=parseInt(document.getElementById('supStart').value)||7;
+  document.getElementById('ip').textContent=`✅ ${f.name} — ${(supRaw.length-st).toLocaleString()} منتج`;
+  ck();
+}
+
+async function loadStore(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  storeWB = await rd(f);
+  const skuSet = extractStoreSKUs(storeWB);
+  document.getElementById('zs').classList.add('ok');
+  document.getElementById('is').textContent=`✅ ${f.name} — ${skuSet.size.toLocaleString()} SKU`;
+  ck();
+}
+
+function ck(){document.getElementById('goBtn').disabled=!(supRaw&&storeWB)}
+
+function calcPrice(cost) {
+  const m1 = 0.8, m2 = 0.6;
+  const h1 = 10, h2 = 35, h3 = 60, h4 = 70, h5 = 80;
+  
+  const base = cost < 200 ? cost + (cost * m1) : cost + (cost * m2);
+  let final;
+  if (base < 10) final = base + h1;
+  else if (base < 50) final = base + h2;
+  else if (base < 100) final = base + h3;
+  else if (base < 200) final = base + h4;
+  else final = base + h5;
+  return Math.round(final * 100) / 100;
+}
+
+function process() {
+  const SUP_START = parseInt(document.getElementById('supStart').value)||2;
+  const SUP_SKU = (parseInt(document.getElementById('supSkuCol').value)||13)-1;
+
+  const prog=document.getElementById('prog'), bar=document.getElementById('bar');
+  const logBox = document.getElementById('logBox');
+  logBox.innerHTML = '';
+  prog.style.display='block'; bar.style.width='5%';
+
+  // Extract store SKUs
+  const storeSKUs = extractStoreSKUs(storeWB);
+  log(`✅ المتجر: ${storeSKUs.size.toLocaleString()} SKU موجود`);
+  bar.style.width='30%';
+
+  // Get supplier headers
+  const headers = supRaw[0] || [];
+  log(`📋 ملف المورد: ${headers.length} عمود`);
+  log(`🔍 فحص SKU من ملف المورد (عمود ${SUP_SKU + 1})...`);
+
+  // Process supplier data
+  const newProducts = [];
+  let totalSupplier = 0, alreadyExists = 0, skipped = 0;
+  const debugSKUs = [];
+
+  for (let i=SUP_START-1; i<supRaw.length; i++) {
+    const row=supRaw[i];
+    let sku=String(row[SUP_SKU]||'').trim();
+    
+    if(!sku) {
+      skipped++;
+      continue;
+    }
+    
+    // Clean SKU - keep only digits
+    const cleanSKU = sku.replace(/[^\d]/g, '');
+    if(!cleanSKU) {
+      skipped++;
+      continue;
+    }
+    
+    totalSupplier++;
+    
+    // Debug first 5 supplier SKUs
+    if(debugSKUs.length < 5) {
+      const exists = storeSKUs.has(cleanSKU);
+      debugSKUs.push({sku: cleanSKU, exists});
+      log(`   📦 SKU من المورد: "${cleanSKU}" ${exists ? '✅ موجود في سلة' : '🆕 جديد'}`);
+    }
+    
+    if(storeSKUs.has(cleanSKU)) {
+      alreadyExists++;
+      continue;
+    }
+    
+    // Store the entire row
+    newProducts.push({
+      sku: cleanSKU,
+      fullRow: row,
+      rowIndex: i
+    });
+  }
+
+  bar.style.width='80%';
+  log(`✅ المورد: ${totalSupplier.toLocaleString()} منتج`);
+  log(`⏭️ تم تجاهل: ${skipped.toLocaleString()} صف (بدون SKU)`);
+  log(`📊 موجود مسبقاً: ${alreadyExists.toLocaleString()}`);
+  log(`🆕 منتجات جديدة: ${newProducts.length.toLocaleString()}`);
+
+  displayRows = newProducts.map(p => ({
+    sku: p.sku,
+    name: String(p.fullRow[1]||'').trim(), // Title column
+    price: parseFloat(p.fullRow[18])||0, // Variant Price (col 19, 0-indexed 18)
+    comparePrice: parseFloat(p.fullRow[19])||0, // Compare At Price (col 20, 0-indexed 19)
+    fullRow: p.fullRow
+  }));
+
+  exportRows = newProducts.map(p => p.fullRow);
+
+  document.getElementById('s1').textContent = totalSupplier.toLocaleString();
+  document.getElementById('s2').textContent = storeSKUs.size.toLocaleString();
+  document.getElementById('s3').textContent = newProducts.length.toLocaleString();
+  document.getElementById('s4').textContent = alreadyExists.toLocaleString();
+  
+  document.getElementById('sg').style.display='grid';
+  document.getElementById('res').style.display='block';
+
+  bar.style.width='100%';
+  setTimeout(()=>{prog.style.display='none'},400);
+  render(displayRows, headers);
+}
+
+function getF(){
+  let d=displayRows;
+  if(cs){
+    const q=cs.toLowerCase();
+    d=d.filter(r=>r.name.toLowerCase().includes(q)||String(r.sku).includes(q));
+  }
+  return d;
+}
+
+function render(data){
+  const tb=document.getElementById('tbody'), em=document.getElementById('emp');
+  if(!data.length){tb.innerHTML='';em.style.display='block';return}
+  em.style.display='none';
+  tb.innerHTML='';
+  const CH=400;
+  let idx=0;
+  
+  function go(s){
+    const e=Math.min(s+CH,data.length);
+    let h='';
+    for(let i=s;i<e;i++){
+      const r=data[i];
+      const fmt=v=>v!=null&&v!==''&&v!==0?Number(v).toFixed(2):'—';
+      
+      h+=`<tr>
+        <td>${++idx}</td>
+        <td><span class="tb">${r.sku}</span></td>
+        <td style="max-width:350px;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${r.name}</td>
+        <td>${fmt(r.price)}</td>
+        <td>${fmt(r.comparePrice)}</td>
+        <td style="color:var(--green);font-weight:600">${fmt(r.suggestedPrice)}</td>
+      </tr>`;
+    }
+    tb.insertAdjacentHTML('beforeend',h);
+    if(e<data.length)requestAnimationFrame(()=>go(e));
+  }
+  go(0);
+}
+
+function sch(v){
+  cs=v;
+  const filtered = getF();
+  render(filtered, supRaw[0] || []);
+}
+
+function dlXlsx(){
+  // Use supplier headers as first row
+  const headers = supRaw[0] || [];
+  const ws=XLSX.utils.aoa_to_sheet([headers, ...exportRows]);
+  
+  // Auto-size columns
+  const colWidths = headers.map((h, idx) => {
+    const maxLen = Math.max(
+      String(h).length,
+      ...exportRows.slice(0, 100).map(r => String(r[idx]||'').length)
+    );
+    return {wch: Math.min(Math.max(maxLen + 2, 10), 60)};
+  });
+  ws['!cols'] = colWidths;
+  
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'New Products');
+  XLSX.writeFile(wb,`new_products_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function dlCSV(){
+  const headers = supRaw[0] || [];
+  let c='\uFEFF' + headers.map(h => `"${String(h).replace(/"/g,'""')}"`).join(',') + '\n';
+  exportRows.forEach(r => {
+    c += r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([c],{type:'text/csv;charset=utf-8'}));
+  a.download=`new_products_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+
+</body>
+</html>
